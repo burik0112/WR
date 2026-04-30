@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-1a1o#d6*xyapnd5$b&)0sn*z+(5l3rv4$=swwe_nef^f=as!)t
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['burik.pythonanywhere.com', '*']
 
 
 
