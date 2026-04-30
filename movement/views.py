@@ -1,13 +1,14 @@
-# dashboard/views.py
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from product.models import Product
 from warehouse.models import Warehouse
 from remaing.models import Stock
 from movement.models import Movement
-from django.shortcuts import get_object_or_404
 
+
+@login_required  # Faqat login qilganlar skaner qila oladi
 def scan_page(request):
     warehouses = Warehouse.objects.all()
     return render(request, 'scan.html', {
@@ -15,6 +16,20 @@ def scan_page(request):
     })
 
 
+def get_product_by_barcode(request):
+    barcode = request.GET.get('barcode', '').strip()  # Bo'sh joylarni olib tashlaymiz
+    try:
+        product = Product.objects.get(barcode=barcode)
+        return JsonResponse({
+            'success': True,
+            'name': product.name,
+            'price': str(product.sale_price)
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Mahsulot topilmadi'})
+
+
+@login_required
 def scan_submit(request):
     if request.method == 'POST':
         barcode = request.POST.get('barcode')
@@ -22,8 +37,8 @@ def scan_submit(request):
         action = request.POST.get('action')
         warehouse_id = request.POST.get('warehouse')
 
-        # Bo'sh maydonlarni tekshirish
-        if not barcode or not warehouse_id or not qty_str:
+        # 1. Ma'lumotlar to'liqligini tekshirish
+        if not all([barcode, qty_str, action, warehouse_id]):
             messages.error(request, "Barcha maydonlarni to'ldiring!")
             return redirect('scan_page')
 
@@ -32,62 +47,45 @@ def scan_submit(request):
         try:
             product = Product.objects.get(barcode=barcode)
             warehouse = Warehouse.objects.get(id=warehouse_id)
+
+            # Stockni olish yoki yaratish
+            stock, created = Stock.objects.get_or_create(
+                product=product,
+                warehouse=warehouse,
+                defaults={'quantity': 0}
+            )
+
+            if action == 'income':
+                stock.quantity += qty
+                Movement.objects.create(
+                    movement_type='income',
+                    product=product,
+                    to_warehouse=warehouse,
+                    quantity=qty,
+                    worker=request.user  # Endi xato bermaydi
+                )
+                messages.success(request, f"{product.name} - {qty} ta kirim qilindi.")
+
+            elif action == 'outcome':
+                if stock.quantity < qty:
+                    messages.error(request, f"Omborda yetarli emas! (Mavjud: {stock.quantity})")
+                    return redirect('scan_page')
+
+                stock.quantity -= qty
+                Movement.objects.create(
+                    movement_type='outcome',
+                    product=product,
+                    from_warehouse=warehouse,
+                    quantity=qty,
+                    worker=request.user
+                )
+                messages.success(request, f"{product.name} - {qty} ta chiqim qilindi.")
+
+            stock.save()
+
         except Product.DoesNotExist:
-            messages.error(request, "Mahsulot topilmadi")
-            return redirect('scan_page')
-        except Warehouse.DoesNotExist:
-            messages.error(request, "Ombor topilmadi")
-            return redirect('scan_page')
+            messages.error(request, "Mahsulot topilmadi!")
+        except Exception as e:
+            messages.error(request, f"Xatolik: {str(e)}")
 
-        stock, created = Stock.objects.get_or_create(
-            product=product,
-            warehouse=warehouse,
-            defaults={'quantity': 0} # Agar yangi stock bo'lsa 0 dan boshlasin
-        )
-
-        if action == 'income':
-            stock.quantity += qty
-            Movement.objects.create(
-                movement_type='income',
-                product=product,
-                to_warehouse=warehouse,
-                quantity=qty,
-                worker=request.user
-            )
-            messages.success(request, f"{product.name} - {qty} ta kirim qilindi.")
-
-        elif action == 'outcome':
-            if stock.quantity < qty:
-                messages.error(request, f"Omborda yetarli qoldiq yo'q! (Mavjud: {stock.quantity})")
-                return redirect('scan_page')
-
-            stock.quantity -= qty
-            Movement.objects.create(
-                movement_type='outcome',
-                product=product,
-                from_warehouse=warehouse,
-                quantity=qty,
-                worker=request.user
-            )
-            messages.success(request, f"{product.name} - {qty} ta chiqim qilindi.")
-
-        stock.save()
         return redirect('scan_page')
-
-
-
-
-
-def get_product_by_barcode(request):
-    barcode = request.GET.get('barcode')
-
-    try:
-        product = Product.objects.get(barcode=barcode)
-        return JsonResponse({
-            'success': True,
-            'name': product.name
-        })
-    except Product.DoesNotExist:
-        return JsonResponse({
-            'success': False
-        })
