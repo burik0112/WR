@@ -7,55 +7,157 @@
 
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <!-- 🔊 BEEP SOUND -->
     <audio id="beepSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 
     <style>
-        #reader {
-            width: 100%;
-            border-radius: 12px;
+        :root {
+            --primary-color: #4f46e5;
+            --success-color: #10b981;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .scanner-card {
+            border: none;
+            border-radius: 24px;
             overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        /* Kamera konteyneri */
+        #reader-wrapper {
+            position: relative;
+            background: #000;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            overflow: hidden;
+        }
+
+        #reader {
+            width: 100% !important;
+            border: none !important;
+        }
+
+        /* Skanerlash animatsiyasi (Yashil chiziq) */
+        .scanner-laser {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--success-color);
+            box-shadow: 0 0 15px var(--success-color);
+            z-index: 10;
+            animation: scanMove 2s infinite linear;
+        }
+
+        @keyframes scanMove {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        .product-found-card {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: -20px;
+            z-index: 20;
+            position: relative;
+            display: none; /* Faqat mahsulot topilganda chiqadi */
+        }
+
+        .form-control, .form-select {
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-save {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+            padding: 14px;
+            font-weight: 600;
+            border: none;
+            transition: 0.3s;
+        }
+
+        .btn-save:hover {
+            background: #4338ca;
+            color: white;
+        }
+
+        .back-btn {
+            color: #4b5563;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 
-<body class="bg-light">
+<body class="p-3">
 
-<div class="container py-4">
-    <div class="card shadow mx-auto" style="max-width: 480px;">
+<div class="container" style="max-width: 500px;">
+
+    <!-- Dashboardga qaytish -->
+    <a href="{% url 'dashboard' %}" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Orqaga qaytish
+    </a>
+
+    <div class="card scanner-card">
+        <!-- Kamera qismi -->
+        <div id="reader-wrapper">
+            <div class="scanner-laser" id="laser"></div>
+            <div id="reader"></div>
+        </div>
+
         <div class="card-body">
-
-            <h4 class="text-center mb-4">📷 Barcode Skaner</h4>
 
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
+                    <div class="alert alert-{{ message.tags }} small py-2">{{ message }}</div>
                 {% endfor %}
             {% endif %}
 
-            <!-- CAMERA -->
-            <div id="reader"></div>
+            <!-- Topilgan mahsulot vizuali -->
+            <div id="product-status" class="product-found-card mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success text-white rounded-circle p-2 me-3">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <small class="text-success fw-bold">Mahsulot topildi:</small>
+                        <h5 id="product_display_name" class="mb-0 text-dark fw-bold">...</h5>
+                    </div>
+                </div>
+            </div>
 
-            <!-- FORM -->
-            <form method="POST" action="{% url 'scan_submit' %}" class="mt-4">
+            <form method="POST" action="{% url 'scan_submit' %}">
                 {% csrf_token %}
 
                 <input type="hidden" name="barcode" id="barcode_input">
 
-                <!-- PRODUCT NAME -->
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Mahsulot nomi:</label>
-                    <input type="text" id="product_name" class="form-control bg-warning-subtle fw-bold"
-                           placeholder="Skan kutilmoqda..." readonly>
+                <!-- Mahsulot nomi (Yashirin yoki oddiy ko'rinishda) -->
+                <div id="name-input-group" class="mb-3">
+                    <label class="form-label small fw-bold text-secondary text-uppercase">Mahsulot nomi:</label>
+                    <input type="text" id="product_name_input" class="form-control bg-light" placeholder="Skanerlang..." readonly>
                 </div>
 
-                <!-- WAREHOUSE -->
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Ombor:</label>
-                    <select name="warehouse" class="form-select" required>
+                    <label class="form-label small fw-bold text-secondary text-uppercase">Ombor:</label>
+                    <select name="warehouse" class="form-select shadow-sm" required>
                         <option value="">-- Tanlang --</option>
                         {% for w in warehouses %}
                             <option value="{{ w.id }}">{{ w.name }}</option>
@@ -63,67 +165,62 @@
                     </select>
                 </div>
 
-                <!-- QUANTITY + ACTION -->
-                <div class="row">
+                <div class="row g-2">
                     <div class="col-6 mb-3">
-                        <label class="form-label fw-bold">Miqdor:</label>
-                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                        <label class="form-label small fw-bold text-secondary text-uppercase">Miqdor:</label>
+                        <input type="number" name="quantity" class="form-control shadow-sm" value="1" min="1" required>
                     </div>
 
                     <div class="col-6 mb-3">
-                        <label class="form-label fw-bold">Harakat:</label>
-                        <select name="action" class="form-select">
-                            <option value="income">Kirim (+)</option>
-                            <option value="outcome">Chiqim (-)</option>
+                        <label class="form-label small fw-bold text-secondary text-uppercase">Harakat:</label>
+                        <select name="action" class="form-select shadow-sm fw-bold text-primary">
+                            <option value="income">KIRIM (+)</option>
+                            <option value="outcome">CHIQIM (-)</option>
                         </select>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-success w-100">
-                    SAQLASH
+                <button type="submit" class="btn btn-save w-100 shadow">
+                    <i class="fas fa-save me-2"></i> SAQLASH
                 </button>
 
-                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">
-                    Qayta skanerlash
+                <button type="button" onclick="restartScanner()" class="btn btn-light w-100 mt-2 border text-secondary small">
+                    <i class="fas fa-sync me-2"></i> Qayta skanerlash
                 </button>
             </form>
-
         </div>
     </div>
 </div>
 
 <script>
     let html5QrCode = new Html5Qrcode("reader");
-
     let scanning = true;
 
     function onScanSuccess(decodedText) {
-
         if (!scanning) return;
         scanning = false;
 
-        // 🔊 BEEP SOUND
         document.getElementById("beepSound").play();
-
-        // barcode input
         document.getElementById('barcode_input').value = decodedText;
-        document.getElementById('product_name').value = "Qidirilmoqda...";
+        document.getElementById('laser').style.display = 'none'; // Animatsiyani to'xtatish
 
         fetch("{% url 'get_product' %}?barcode=" + decodedText)
             .then(res => res.json())
             .then(data => {
-
                 if (data.success) {
-                    document.getElementById('product_name').value = data.name;
+                    // Vizual effektlar
+                    document.getElementById('product-status').style.display = 'block';
+                    document.getElementById('product_display_name').innerText = data.name;
+                    document.getElementById('product_name_input').value = data.name;
+                    document.getElementById('name-input-group').style.display = 'none'; // Pastki inputni yashirish
                 } else {
-                    document.getElementById('product_name').value = "";
                     alert("❌ Mahsulot topilmadi: " + decodedText);
+                    restartScanner();
                 }
-
             })
             .catch(err => {
-                console.log(err);
-                alert("❌ Server xatolik!");
+                alert("❌ Aloqa xatosi!");
+                restartScanner();
             })
             .finally(() => {
                 html5QrCode.stop();
@@ -131,20 +228,22 @@
     }
 
     function restartScanner() {
-
-        document.getElementById('product_name').value = "";
+        document.getElementById('product-status').style.display = 'none';
+        document.getElementById('name-input-group').style.display = 'block';
+        document.getElementById('product_name_input').value = "";
         document.getElementById('barcode_input').value = "";
+        document.getElementById('laser').style.display = 'block';
 
         scanning = true;
 
         html5QrCode.start(
             { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
+            { fps: 15, qrbox: {width: 250, height: 250} },
             onScanSuccess
-        );
+        ).catch(err => console.error("Kamera yoqilmadi", err));
     }
 
-    // start
+    // Start
     restartScanner();
 </script>
 

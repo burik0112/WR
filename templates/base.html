@@ -1,234 +1,310 @@
-<!-- templates/dashboard/index.html -->
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ombor Boshqaruv Paneli</title>
 
-<title>Warehouse Dashboard</title>
+    <!-- Bootstrap 5 & FontAwesome Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #4f46e5;
+            --dark-bg: #111827;
+        }
 
-<style>
-body{
-    background:#f4f6f9;
-    font-family:Arial, sans-serif;
-}
-.sidebar{
-    width:260px;
-    height:100vh;
-    background:#111827;
-    position:fixed;
-    left:0;
-    top:0;
-    color:white;
-    padding-top:20px;
-}
-.sidebar h3{
-    text-align:center;
-    margin-bottom:30px;
-}
-.sidebar a{
-    display:block;
-    color:#d1d5db;
-    padding:14px 25px;
-    text-decoration:none;
-    transition:0.3s;
-}
-.sidebar a:hover{
-    background:#1f2937;
-    color:white;
-}
-.content{
-    margin-left:260px;
-    padding:30px;
-}
-.card-box{
-    border:none;
-    border-radius:18px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.05);
-}
-.table-box{
-    background:white;
-    border-radius:18px;
-    padding:20px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.05);
-}
-.title{
-    font-weight:700;
-}
-</style>
+        body {
+            background: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
 
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--dark-bg);
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .sidebar .nav-link {
+            color: #9ca3af;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
+            transition: 0.2s;
+        }
+
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: #1f2937;
+            color: white;
+            border-left-color: var(--primary-color);
+        }
+
+        .sidebar-header {
+            padding: 25px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-bottom: 1px solid #374151;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        /* Responsive Sidebar */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                left: calc(-1 * var(--sidebar-width));
+            }
+            .sidebar.active {
+                left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .mobile-header {
+                display: flex !important;
+            }
+        }
+
+        .mobile-header {
+            display: none;
+            background: var(--dark-bg);
+            color: white;
+            padding: 15px 20px;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1001;
+        }
+
+        /* Dashboard Cards */
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .table-box {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .badge-low { background: #fee2e2; color: #dc2626; }
+        .table thead th { background: #f9fafb; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; color: #6b7280; }
+    </style>
 </head>
 <body>
 
+<!-- Mobil Header (Faqat telefonda ko'rinadi) -->
+<div class="mobile-header">
+    <span>📦 Ombor Tizimi</span>
+    <button class="btn btn-outline-light btn-sm" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
+</div>
+
 <!-- Sidebar -->
-<div class="sidebar">
-
-    <h3>📦 Warehouse</h3>
-
-    <a href="#">🏠 Dashboard</a>
-    <a href="#">📦 Products</a>
-    <a href="#">🏢 Warehouses</a>
-    <a href="#">📊 Stock</a>
-    <a href="#">🚚 Transfer</a>
-    <a href="#">📑 Reports</a>
-
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-warehouse me-2 text-primary"></i> OMBIRO
+    </div>
+    <div class="nav flex-column mt-3">
+        <a href="#" class="nav-link active"><i class="fas fa-home"></i> Bosh sahifa</a>
+        <a href="{% url 'scan' %}" class="nav-link text-warning"><i class="fas fa-barcode"></i> <b>Skaner (Kirim-Chiqim)</b></a>
+        <a href="#" class="nav-link"><i class="fas fa-box"></i> Mahsulotlar</a>
+        <a href="#" class="nav-link"><i class="fas fa-building"></i> Omborlar</a>
+        <a href="#" class="nav-link"><i class="fas fa-layer-group"></i> Qoldiqlar</a>
+        <a href="#" class="nav-link"><i class="fas fa-exchange-alt"></i> Transfer</a>
+        <a href="#" class="nav-link"><i class="fas fa-chart-line"></i> Hisobotlar</a>
+        <hr class="mx-3 text-secondary">
+        <a href="/admin/logout/" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Chiqish</a>
+    </div>
 </div>
 
+<!-- Asosiy Kontent -->
+<div class="main-content">
 
-<!-- Content -->
-<div class="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Boshqaruv Paneli</h3>
+            <p class="text-muted small">Xush kelibsiz, Admin!</p>
+        </div>
+        <a href="{% url 'scan' %}" class="btn btn-primary d-none d-md-block">
+            <i class="fas fa-barcode me-2"></i> Yangi Skanerlash
+        </a>
+    </div>
 
-<div class="d-flex justify-content-between mb-4">
-    <h2 class="title">Dashboard</h2>
-    <h5>Welcome Admin</h5>
+    <!-- Statiska Kartalari -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary-subtle text-primary"><i class="fas fa-boxes"></i></div>
+                <div class="text-muted small">Mahsulotlar</div>
+                <h3 class="fw-bold">{{ total_products }}</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success-subtle text-success"><i class="fas fa-warehouse"></i></div>
+                <div class="text-muted small">Omborlar</div>
+                <h3 class="fw-bold">{{ total_warehouses }}</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning-subtle text-warning"><i class="fas fa-cubes"></i></div>
+                <div class="text-muted small">Jami Qoldiq</div>
+                <h3 class="fw-bold">{{ total_stock }}</h3>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info-subtle text-info"><i class="fas fa-code-branch"></i></div>
+                <div class="text-muted small">Filiallar</div>
+                <h3 class="fw-bold">{{ branch_warehouses }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Oxirgi Mahsulotlar -->
+        <div class="col-12 col-xl-6">
+            <div class="table-box h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-plus-circle me-2 text-primary"></i>Yangi Mahsulotlar</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Nomi</th>
+                                <th>Barcode</th>
+                                <th>Narxi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in recent_products %}
+                            <tr>
+                                <td class="fw-medium">{{ item.name }}</td>
+                                <td><code class="text-dark small">{{ item.barcode }}</code></td>
+                                <td>{{ item.sale_price }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Omborlar Hisoboti -->
+        <div class="col-12 col-xl-6">
+            <div class="table-box h-100">
+                <h5 class="fw-bold mb-3"><i class="fas fa-chart-pie me-2 text-success"></i>Omborlar Holati</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Ombor nomi</th>
+                                <th class="text-center">Turlar</th>
+                                <th class="text-center">Jami Soni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in warehouse_stock %}
+                            <tr>
+                                <td>{{ item.warehouse__name }}</td>
+                                <td class="text-center">{{ item.total_products }}</td>
+                                <td class="text-center fw-bold">{{ item.total_qty }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kam Qolgan Mahsulotlar -->
+        <div class="col-12">
+            <div class="table-box border-start border-4 border-danger">
+                <h5 class="fw-bold text-danger mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Kam qolgan mahsulotlar (Zaxira kam)</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Mahsulot nomi</th>
+                                <th>Ombor</th>
+                                <th>Hozirgi Miqdor</th>
+                                <th>Holat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock %}
+                            <tr>
+                                <td class="fw-bold">{{ item.product.name }}</td>
+                                <td>{{ item.warehouse.name }}</td>
+                                <td class="text-danger fw-bold">{{ item.quantity }} ta</td>
+                                <td><span class="badge badge-low px-3">Tugayapti</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- JavaScript for Sidebar Toggle -->
+<script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+    }
 
-<!-- Cards -->
-<div class="row g-4 mb-4">
-
-<div class="col-md-3">
-<div class="card card-box p-4">
-<h6>Total Products</h6>
-<h2>{{ total_products }}</h2>
-</div>
-</div>
-
-<div class="col-md-3">
-<div class="card card-box p-4">
-<h6>Total Warehouses</h6>
-<h2>{{ total_warehouses }}</h2>
-</div>
-</div>
-
-<div class="col-md-3">
-<div class="card card-box p-4">
-<h6>Total Stock</h6>
-<h2>{{ total_stock }}</h2>
-</div>
-</div>
-
-<div class="col-md-3">
-<div class="card card-box p-4">
-<h6>Main / Branch</h6>
-<h2>{{ main_warehouses }} / {{ branch_warehouses }}</h2>
-</div>
-</div>
-
-</div>
-
-
-<!-- Tables -->
-<div class="row g-4">
-
-<!-- Recent Products -->
-<div class="col-md-6">
-<div class="table-box">
-
-<h5 class="mb-3">🆕 Recent Products</h5>
-
-<table class="table table-hover">
-<thead>
-<tr>
-<th>ID</th>
-<th>Name</th>
-<th>Barcode</th>
-</tr>
-</thead>
-
-<tbody>
-{% for item in recent_products %}
-<tr>
-<td>{{ item.id }}</td>
-<td>{{ item.name }}</td>
-<td>{{ item.barcode }}</td>
-</tr>
-{% endfor %}
-</tbody>
-
-</table>
-
-</div>
-</div>
-
-
-<!-- Warehouse Stock -->
-<div class="col-md-6">
-<div class="table-box">
-
-<h5 class="mb-3">🏢 Warehouse Summary</h5>
-
-<table class="table table-hover">
-
-<thead>
-<tr>
-<th>Warehouse</th>
-<th>Products</th>
-<th>Qty</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for item in warehouse_stock %}
-<tr>
-<td>{{ item.warehouse__name }}</td>
-<td>{{ item.total_products }}</td>
-<td>{{ item.total_qty }}</td>
-</tr>
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-</div>
-
-</div>
-
-
-<!-- Low stock -->
-<div class="row mt-4">
-
-<div class="col-md-12">
-<div class="table-box">
-
-<h5 class="mb-3 text-danger">⚠ Low Stock Products</h5>
-
-<table class="table table-hover">
-
-<thead>
-<tr>
-<th>Product</th>
-<th>Warehouse</th>
-<th>Qty</th>
-</tr>
-</thead>
-
-<tbody>
-
-{% for item in low_stock %}
-<tr>
-<td>{{ item.product.name }}</td>
-<td>{{ item.warehouse.name }}</td>
-<td>{{ item.quantity }}</td>
-</tr>
-{% endfor %}
-
-</tbody>
-
-</table>
-
-</div>
-</div>
-
-</div>
-
-</div>
+    // Mobil ekranda menyu tashqarisiga bosilsa yopish
+    window.addEventListener('click', function(e) {
+        if (window.innerWidth < 992) {
+            const sidebar = document.getElementById('sidebar');
+            const headerBtn = document.querySelector('.mobile-header button');
+            if (!sidebar.contains(e.target) && !headerBtn.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        }
+    });
+</script>
 
 </body>
 </html>

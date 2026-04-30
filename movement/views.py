@@ -95,4 +95,4 @@ def scan_submit(request):
         except Exception as e:
             messages.error(request, f"Xatolik: {str(e)}")
 
-        return redirect('dashboard')
+        return redirect('scan')
