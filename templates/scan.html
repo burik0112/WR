@@ -15,12 +15,12 @@
             <h4 class="text-center mb-4">📷 Barcode Skaner</h4>
 
             {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
             {% endif %}
 
             <!-- Skaner kamerasi -->
@@ -34,7 +34,8 @@
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">Mahsulot nomi:</label>
-                    <input type="text" id="product_display_name" class="form-control bg-warning-subtle fw-bold" readonly placeholder="Skaner kutilmoqda...">
+                    <input type="text" id="product_display_name" class="form-control bg-warning-subtle fw-bold" readonly
+                           placeholder="Skaner kutilmoqda...">
                 </div>
 
                 <div class="mb-3">
@@ -42,7 +43,7 @@
                     <select name="warehouse" class="form-select" required>
                         <option value="">-- Tanlang --</option>
                         {% for w in warehouses %}
-                            <option value="{{ w.id }}">{{ w.name }}</option>
+                        <option value="{{ w.id }}">{{ w.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -62,7 +63,9 @@
                 </div>
 
                 <button type="submit" class="btn btn-success w-100 py-2">SAQLASH</button>
-                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">Qayta skanerlash</button>
+                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">Qayta
+                    skanerlash
+                </button>
             </form>
         </div>
     </div>
@@ -72,34 +75,40 @@
     let html5QrCode = new Html5Qrcode("reader");
 
     function onScanSuccess(decodedText) {
-        // Skanerlanganda barcode-ni saqlash
         document.getElementById('barcode_input').value = decodedText;
         document.getElementById('product_display_name').value = "Qidirilmoqda...";
 
-        // Backenddan mahsulotni qidirish
-        // DIQQAT: Manzil /get-product/ ekanligini tekshiring
-        fetch(`/get-product/?barcode=${decodedText}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('product_display_name').value = data.name;
-                // Muvaffaqiyatli bo'lsa kamerani to'xtatib tursa ham bo'ladi
-                html5QrCode.stop();
-            } else {
-                alert("Mahsulot topilmadi: " + decodedText);
-                document.getElementById('product_display_name').value = "";
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Xatolik yuz berdi!");
-        });
+        // Django URL-ni o'zi aniqlashi uchun {% url %} dan foydalanamiz
+        let url = "{% url 'get_product' %}?barcode=" + decodedText;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    // Agar 404 yoki 500 xato bo'lsa
+                    throw new Error("Server xatosi: " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('product_display_name').value = data.name;
+                } else {
+                    alert("❌ Mahsulot topilmadi: " + decodedText);
+                    document.getElementById('product_display_name').value = "";
+                }
+            })
+            .catch(error => {
+                // MUHIM: Xatoni alert orqali ko'ramiz
+                console.error('Error:', error);
+                alert("Xatolik: " + error.message + "\nEhtimol tizimga (admin) kirmagansiz yoki URL noto'g'ri.");
+                document.getElementById('product_display_name').value = "Xatolik!";
+            });
     }
 
     function restartScanner() {
         html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 200 } },
+            {facingMode: "environment"},
+            {fps: 10, qrbox: {width: 250, height: 200}},
             onScanSuccess
         );
     }
