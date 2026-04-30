@@ -17,16 +17,23 @@ def scan_page(request):
 
 
 def get_product_by_barcode(request):
-    barcode = request.GET.get('barcode', '').strip()  # Bo'sh joylarni olib tashlaymiz
+    barcode = request.GET.get('barcode')
+    print("SCAN:", barcode)
+
     try:
         product = Product.objects.get(barcode=barcode)
+        print("FOUND:", product.name)
+
         return JsonResponse({
             'success': True,
-            'name': product.name,
-            'price': str(product.sale_price)
+            'name': product.name
         })
     except Product.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Mahsulot topilmadi'})
+        print("NOT FOUND")
+
+        return JsonResponse({
+            'success': False
+        })
 
 
 @login_required

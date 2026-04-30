@@ -4,55 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sklad Skaner</title>
+
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- 🔊 BEEP SOUND -->
+    <audio id="beepSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+
+    <style>
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+    </style>
 </head>
+
 <body class="bg-light">
 
 <div class="container py-4">
-    <div class="card shadow-sm mx-auto" style="max-width: 450px;">
+    <div class="card shadow mx-auto" style="max-width: 480px;">
         <div class="card-body">
+
             <h4 class="text-center mb-4">📷 Barcode Skaner</h4>
 
             {% if messages %}
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
             {% endif %}
 
-            <!-- Skaner kamerasi -->
-            <div id="reader" style="width: 100%; border-radius: 10px;"></div>
+            <!-- CAMERA -->
+            <div id="reader"></div>
 
+            <!-- FORM -->
             <form method="POST" action="{% url 'scan_submit' %}" class="mt-4">
                 {% csrf_token %}
 
-                <!-- Barcode (yashirin) -->
                 <input type="hidden" name="barcode" id="barcode_input">
 
+                <!-- PRODUCT NAME -->
                 <div class="mb-3">
                     <label class="form-label fw-bold">Mahsulot nomi:</label>
-                    <input type="text" id="product_display_name" class="form-control bg-warning-subtle fw-bold" readonly
-                           placeholder="Skaner kutilmoqda...">
+                    <input type="text" id="product_name" class="form-control bg-warning-subtle fw-bold"
+                           placeholder="Skan kutilmoqda..." readonly>
                 </div>
 
+                <!-- WAREHOUSE -->
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Omborni tanlang:</label>
+                    <label class="form-label fw-bold">Ombor:</label>
                     <select name="warehouse" class="form-select" required>
                         <option value="">-- Tanlang --</option>
                         {% for w in warehouses %}
-                        <option value="{{ w.id }}">{{ w.name }}</option>
+                            <option value="{{ w.id }}">{{ w.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
+                <!-- QUANTITY + ACTION -->
                 <div class="row">
                     <div class="col-6 mb-3">
                         <label class="form-label fw-bold">Miqdor:</label>
                         <input type="number" name="quantity" class="form-control" value="1" min="1" required>
                     </div>
+
                     <div class="col-6 mb-3">
                         <label class="form-label fw-bold">Harakat:</label>
                         <select name="action" class="form-select">
@@ -62,11 +79,15 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-success w-100 py-2">SAQLASH</button>
-                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">Qayta
-                    skanerlash
+                <button type="submit" class="btn btn-success w-100">
+                    SAQLASH
+                </button>
+
+                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">
+                    Qayta skanerlash
                 </button>
             </form>
+
         </div>
     </div>
 </div>
@@ -74,49 +95,60 @@
 <script>
     let html5QrCode = new Html5Qrcode("reader");
 
+    let scanning = true;
+
     function onScanSuccess(decodedText) {
+
+        if (!scanning) return;
+        scanning = false;
+
+        // 🔊 BEEP SOUND
+        document.getElementById("beepSound").play();
+
+        // barcode input
         document.getElementById('barcode_input').value = decodedText;
-        document.getElementById('product_display_name').value = "Qidirilmoqda...";
+        document.getElementById('product_name').value = "Qidirilmoqda...";
 
-
-        let url = "{% url 'get_product' %}?barcode=" + decodedText;
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    // Agar 404 yoki 500 xato bo'lsa
-                    throw new Error("Server xatosi: " + response.status);
-                }
-                return response.json();
-            })
+        fetch("{% url 'get_product' %}?barcode=" + decodedText)
+            .then(res => res.json())
             .then(data => {
+
                 if (data.success) {
-                    document.getElementById('product_display_name').value = data.name;
+                    document.getElementById('product_name').value = data.name;
                 } else {
+                    document.getElementById('product_name').value = "";
                     alert("❌ Mahsulot topilmadi: " + decodedText);
-                    document.getElementById('product_display_name').value = "";
                 }
+
             })
-            .catch(error => {
-                // MUHIM: Xatoni alert orqali ko'ramiz
-                console.error('Error:', error);
-                alert("Xatolik: " + error.message + "\nEhtimol tizimga (admin) kirmagansiz yoki URL noto'g'ri.");
-                document.getElementById('product_display_name').value = "Xatolik!";
+            .catch(err => {
+                console.log(err);
+                alert("❌ Server xatolik!");
+            })
+            .finally(() => {
+                html5QrCode.stop();
             });
     }
 
     function restartScanner() {
+
+        document.getElementById('product_name').value = "";
+        document.getElementById('barcode_input').value = "";
+
+        scanning = true;
+
         html5QrCode.start(
-            {facingMode: "environment"},
-            {fps: 10, qrbox: {width: 250, height: 200}},
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
             onScanSuccess
         );
     }
 
-    // Kamerani ishga tushirish
+    // start
     restartScanner();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>
