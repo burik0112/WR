@@ -15,7 +15,6 @@
 
 <h3>📷 Barcode Scan</h3>
 
-<!-- Kamera -->
 <div id="reader" style="width:300px;"></div>
 
 <br>
@@ -24,6 +23,11 @@
 {% csrf_token %}
 
 <input type="hidden" name="barcode" id="barcode">
+
+<div class="mb-2">
+<label>Product Name</label>
+<input type="text" id="product_name" class="form-control" readonly>
+</div>
 
 <div class="mb-2">
 <label>Quantity</label>
@@ -38,15 +42,6 @@
 </select>
 </div>
 
-<div class="mb-2">
-<label>Warehouse</label>
-<select name="warehouse" class="form-control">
-{% for w in warehouses %}
-<option value="{{ w.id }}">{{ w.name }}</option>
-{% endfor %}
-</select>
-</div>
-
 <button class="btn btn-success w-100 mt-2">Saqlash</button>
 
 </form>
@@ -54,11 +49,24 @@
 <script>
 
 function onScanSuccess(decodedText) {
-    // barcode tushadi
+
+    html5QrCode.stop(); // kamera to'xtaydi
+
     document.getElementById('barcode').value = decodedText;
 
-    // avtomatik alert
-    alert("Scan: " + decodedText);
+    // 🔥 backenddan mahsulotni olish
+    fetch(`/get-product/?barcode=${decodedText}`)
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.success) {
+            document.getElementById('product_name').value = data.name;
+        } else {
+            alert("❌ Mahsulot topilmadi!");
+        }
+
+    });
+
 }
 
 const html5QrCode = new Html5Qrcode("reader");

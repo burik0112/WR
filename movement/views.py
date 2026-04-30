@@ -1,5 +1,5 @@
 # dashboard/views.py
-
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from product.models import Product
@@ -67,3 +67,21 @@ def scan_submit(request):
 
         messages.success(request, "Bajarildi ✅")
         return redirect('scan')
+
+
+
+
+
+def get_product_by_barcode(request):
+    barcode = request.GET.get('barcode')
+
+    try:
+        product = Product.objects.get(barcode=barcode)
+        return JsonResponse({
+            'success': True,
+            'name': product.name
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False
+        })
