@@ -6,128 +6,115 @@
     <title>Sklad Skaner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        #reader { width: 100%; border-radius: 15px; background: #000; }
-        .product-confirm-box { display: none; border: 2px solid #28a745; border-radius: 15px; padding: 15px; background: #f8fff9; }
-        .product-name-large { font-size: 24px; color: #198754; font-weight: bold; }
-        #main-form { display: none; } /* Mahsulot tasdiqlanmaguncha yashirin turadi */
-    </style>
 </head>
 <body class="bg-light">
 
-<div class="container py-3">
-    <div class="card shadow border-0 mx-auto" style="max-width: 450px;">
-        <div class="card-body text-center">
-            <h4 class="mb-3">📷 Barcode Skaner</h4>
+<div class="container py-4">
+    <div class="card shadow-sm mx-auto" style="max-width: 450px;">
+        <div class="card-body">
+            <h4 class="text-center mb-4">📷 Barcode Skaner</h4>
 
-            <!-- Kamera -->
-            <div id="reader" class="mb-3"></div>
-
-            <!-- 1-bosqich: Mahsulotni tasdiqlash (Skanerdan keyin chiqadi) -->
-            <div id="confirm-section" class="product-confirm-box mb-3">
-                <p class="text-muted mb-1">Mahsulot topildi:</p>
-                <div id="found-product-name" class="product-name-large mb-2"></div>
-                <p class="fw-bold text-dark">Bu to'g'rimi?</p>
-                <div class="d-flex gap-2 justify-content-center">
-                    <button type="button" onclick="approveProduct()" class="btn btn-success px-4">HA, To'g'ri</button>
-                    <button type="button" onclick="resetScanner()" class="btn btn-danger">Yo'q, qayta</button>
-                </div>
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
+            {% endfor %}
+            {% endif %}
 
-            <!-- 2-bosqich: Formani to'ldirish (Tasdiqlangandan keyin chiqadi) -->
-            <form id="main-form" method="POST" action="{% url 'scan_submit' %}">
+            <!-- Skaner kamerasi -->
+            <div id="reader" style="width: 100%; border-radius: 10px;"></div>
+
+            <form method="POST" action="{% url 'scan_submit' %}" class="mt-4">
                 {% csrf_token %}
+
+                <!-- Barcode (yashirin) -->
                 <input type="hidden" name="barcode" id="barcode_input">
 
-                <div class="alert alert-info py-2" id="final-product-title"></div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Mahsulot nomi:</label>
+                    <input type="text" id="product_display_name" class="form-control bg-warning-subtle fw-bold" readonly
+                           placeholder="Skaner kutilmoqda...">
+                </div>
 
-                <div class="mb-3 text-start">
+                <div class="mb-3">
                     <label class="form-label fw-bold">Omborni tanlang:</label>
-                    <select name="warehouse" class="form-select form-select-lg" required>
+                    <select name="warehouse" class="form-select" required>
                         <option value="">-- Tanlang --</option>
                         {% for w in warehouses %}
-                            <option value="{{ w.id }}">{{ w.name }}</option>
+                        <option value="{{ w.id }}">{{ w.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="row text-start">
+                <div class="row">
                     <div class="col-6 mb-3">
                         <label class="form-label fw-bold">Miqdor:</label>
-                        <input type="number" name="quantity" class="form-control form-control-lg" value="1" min="1" required>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
                     </div>
                     <div class="col-6 mb-3">
                         <label class="form-label fw-bold">Harakat:</label>
-                        <select name="action" class="form-select form-select-lg text-primary fw-bold">
-                            <option value="income">KIRIM (+)</option>
-                            <option value="outcome">CHIQIM (-)</option>
+                        <select name="action" class="form-select">
+                            <option value="income">Kirim (+)</option>
+                            <option value="outcome">Chiqim (-)</option>
                         </select>
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 btn-lg shadow">SAQLASH ✅</button>
-                <button type="button" onclick="resetScanner()" class="btn btn-link text-muted mt-2">Bekor qilish</button>
+                <button type="submit" class="btn btn-success w-100 py-2">SAQLASH</button>
+                <button type="button" onclick="restartScanner()" class="btn btn-outline-primary w-100 mt-2">Qayta
+                    skanerlash
+                </button>
             </form>
-
         </div>
     </div>
 </div>
 
 <script>
     let html5QrCode = new Html5Qrcode("reader");
-    const confirmSection = document.getElementById('confirm-section');
-    const mainForm = document.getElementById('main-form');
-    const foundProductName = document.getElementById('found-product-name');
-    const barcodeInput = document.getElementById('barcode_input');
-    const finalProductTitle = document.getElementById('final-product-title');
 
     function onScanSuccess(decodedText) {
-        // Skanerlanganda kamerani to'xtatish
-        html5QrCode.stop();
+        document.getElementById('barcode_input').value = decodedText;
+        document.getElementById('product_display_name').value = "Qidirilmoqda...";
 
-        // Backenddan tekshirish
-        fetch(`/get-product/?barcode=${decodedText}`)
-        .then(res => res.json())
-        .then(data => {
-            if(data.success) {
-                // Mahsulot topildi - Tasdiqlash oynasini ko'rsatish
-                barcodeInput.value = decodedText;
-                foundProductName.innerText = data.name;
-                confirmSection.style.display = 'block';
-                document.getElementById('reader').style.display = 'none';
-            } else {
-                alert("❌ Mahsulot bazada yo'q! (" + decodedText + ")");
-                resetScanner();
-            }
-        }).catch(err => {
-            alert("Xatolik yuz berdi!");
-            resetScanner();
-        });
+
+        let url = "{% url 'get_product' %}?barcode=" + decodedText;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    // Agar 404 yoki 500 xato bo'lsa
+                    throw new Error("Server xatosi: " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('product_display_name').value = data.name;
+                } else {
+                    alert("❌ Mahsulot topilmadi: " + decodedText);
+                    document.getElementById('product_display_name').value = "";
+                }
+            })
+            .catch(error => {
+                // MUHIM: Xatoni alert orqali ko'ramiz
+                console.error('Error:', error);
+                alert("Xatolik: " + error.message + "\nEhtimol tizimga (admin) kirmagansiz yoki URL noto'g'ri.");
+                document.getElementById('product_display_name').value = "Xatolik!";
+            });
     }
 
-    // "HA" tugmasi bosilganda
-    function approveProduct() {
-        confirmSection.style.display = 'none';
-        mainForm.style.display = 'block';
-        finalProductTitle.innerText = "Mahsulot: " + foundProductName.innerText;
-    }
-
-    // Qayta skanerlash yoki "Yo'q" tugmasi
-    function resetScanner() {
-        confirmSection.style.display = 'none';
-        mainForm.style.display = 'none';
-        document.getElementById('reader').style.display = 'block';
-        barcodeInput.value = "";
-
+    function restartScanner() {
         html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 200 } },
+            {facingMode: "environment"},
+            {fps: 10, qrbox: {width: 250, height: 200}},
             onScanSuccess
         );
     }
 
-    // Ishga tushirish
-    resetScanner();
+    // Kamerani ishga tushirish
+    restartScanner();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
