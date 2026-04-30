@@ -1,85 +1,102 @@
-<!-- templates/dashboard/scan.html -->
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Scan</title>
-
-    <!-- Kamera kutubxona -->
+    <title>Sklad Skaner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://unpkg.com/html5-qrcode"></script>
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 10px; overflow: hidden; }
+        .container { max-width: 500px; }
+    </style>
 </head>
+<body class="bg-light p-3">
 
-<body class="p-4">
+<div class="container bg-white p-4 shadow-sm rounded">
+    <h3 class="text-center mb-4">📷 Barcode Skaner</h3>
 
-<h3>📷 Barcode Scan</h3>
+    <!-- Django xabarlarini ko'rsatish -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
 
-<div id="reader" style="width:300px;"></div>
+    <div id="reader"></div>
+    <div id="result-info" class="text-center mt-2 text-success fw-bold"></div>
 
-<br>
+    <form method="POST" action="{% url 'scan_submit' %}" class="mt-4">
+        {% csrf_token %}
 
-<form method="POST" action="{% url 'scan_submit' %}">
-{% csrf_token %}
+        <input type="hidden" name="barcode" id="barcode">
 
-<input type="hidden" name="barcode" id="barcode">
+        <div class="mb-3">
+            <label class="form-label">Mahsulot nomi</label>
+            <input type="text" id="product_name" class="form-control bg-light" readonly placeholder="Skanerlang...">
+        </div>
 
-<div class="mb-2">
-<label>Product Name</label>
-<input type="text" id="product_name" class="form-control" readonly>
+        <div class="mb-3">
+            <label class="form-label">Omborni tanlang</label>
+            <select name="warehouse" class="form-control" required>
+                <option value="">--- Tanlang ---</option>
+                {% for w in warehouses %}
+                    <option value="{{ w.id }}">{{ w.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Miqdori</label>
+            <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Harakat turi</label>
+            <select name="action" class="form-control">
+                <option value="income">Kirim (+)</option>
+                <option value="outcome">Chiqim (-)</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2">Saqlash</button>
+        <button type="button" onclick="startScanner()" class="btn btn-outline-secondary w-100 mt-2">Qayta skanerlash</button>
+    </form>
 </div>
-
-<div class="mb-2">
-<label>Quantity</label>
-<input type="number" name="quantity" class="form-control" required>
-</div>
-
-<div class="mb-2">
-<label>Action</label>
-<select name="action" class="form-control">
-<option value="income">Kirim</option>
-<option value="outcome">Chiqim</option>
-</select>
-</div>
-
-<button class="btn btn-success w-100 mt-2">Saqlash</button>
-
-</form>
 
 <script>
+    let html5QrCode = new Html5Qrcode("reader");
 
-function onScanSuccess(decodedText) {
+    function onScanSuccess(decodedText) {
+        // Skanerlash to'xtaydi
+        html5QrCode.stop();
+        document.getElementById('barcode').value = decodedText;
+        document.getElementById('result-info').innerText = "Skanerlandi: " + decodedText;
 
-    html5QrCode.stop(); // kamera to'xtaydi
+        // Backenddan ma'lumot olish
+        fetch(`/get-product/?barcode=${decodedText}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                document.getElementById('product_name').value = data.name;
+            } else {
+                alert("❌ Mahsulot bazada topilmadi!");
+                startScanner(); // Topilmasa qayta skanerni yoqish
+            }
+        });
+    }
 
-    document.getElementById('barcode').value = decodedText;
+    function startScanner() {
+        html5QrCode.start(
+            { facingMode: "environment" }, // Orqa kamera
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            onScanSuccess
+        ).catch(err => {
+            console.error("Kamerani yoqishda xato:", err);
+        });
+    }
 
-    // 🔥 backenddan mahsulotni olish
-    fetch(`/get-product/?barcode=${decodedText}`)
-    .then(res => res.json())
-    .then(data => {
-
-        if(data.success) {
-            document.getElementById('product_name').value = data.name;
-        } else {
-            alert("❌ Mahsulot topilmadi!");
-        }
-
-    });
-
-}
-
-const html5QrCode = new Html5Qrcode("reader");
-
-html5QrCode.start(
-    { facingMode: "environment" },
-    {
-        fps: 10,
-        qrbox: 250
-    },
-    onScanSuccess
-);
-
+    // Birinchi marta ishga tushirish
+    startScanner();
 </script>
 
 </body>
