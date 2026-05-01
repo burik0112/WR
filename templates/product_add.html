@@ -3,85 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xatosiz Professional Skaner</title>
+    <title>Sklad Pro Scanner</title>
 
-    <!-- 🔥 HTML5-QRCODE (Eng kuchli skaner kutubxonasi) -->
+    <!-- html5-qrcode kutubxonasi -->
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        body { background:#f0f2f5; font-family:sans-serif; }
-        .scanner-card { border-radius:25px; overflow:hidden; box-shadow:0 15px 35px rgba(0,0,0,0.2); background: #fff; }
+        body { background:#1a1d20; color: white; font-family: sans-serif; }
+        .scanner-container {
+            width: 100%; max-width: 600px; margin: auto;
+            border-radius: 20px; overflow: hidden;
+            border: 2px solid #333; background: #000;
+            position: relative;
+        }
+        #reader { width: 100% !important; }
 
-        /* 📱 SKANER OYNASI - UZUN KODLAR UCHUN MAXSUS */
-        #reader-wrapper { position:relative; background:#000; min-height:350px; }
-        #reader { width: 100% !important; border: none !important; }
-
+        /* Yashil lazer chizig'i */
         .laser {
-            position:absolute; width:100%; height:4px; background:#00ff00;
-            box-shadow:0 0 20px #00ff00; top: 50%; z-index: 100;
-            animation: moveLaser 3s infinite ease-in-out; pointer-events: none;
+            position: absolute; width: 100%; height: 3px;
+            background: #00ff00; box-shadow: 0 0 15px #00ff00;
+            top: 50%; z-index: 100; pointer-events: none;
+            animation: moveLaser 3s infinite ease-in-out;
         }
-        @keyframes moveLaser { 0%{top:25%} 50%{top:75%} 100%{top:25%} }
+        @keyframes moveLaser {
+            0% { top: 25%; } 50% { top: 75%; } 100% { top: 25%; }
+        }
 
-        #form-box { display:none; padding:25px; }
-        .code-display {
-            background: #e8f5e9; border: 2px dashed #2e7d32;
-            padding: 15px; border-radius: 15px; font-family: monospace;
-            font-size: 14px; word-break: break-all; color: #1b5e20;
-        }
+        #result-box { display: none; background: white; color: black; padding: 25px; border-radius: 20px; margin-top: 15px; }
+        .code-text { background: #f8f9fa; border: 1px solid #ddd; padding: 10px; font-family: monospace; word-break: break-all; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
-
 <body class="p-3">
 
-<div class="container">
-    <div class="card scanner-card mx-auto" style="max-width:600px;">
+<div class="container text-center">
+    <h4 class="mb-3 text-success fw-bold">📷 Professional Skaner</h4>
 
-        <!-- CAMERA AREA -->
-        <div id="reader-wrapper">
-            <div class="laser"></div>
-            <div id="reader"></div>
-        </div>
+    <div class="scanner-container shadow-lg">
+        <div class="laser"></div>
+        <div id="reader"></div>
+    </div>
 
-        <div class="text-center py-2 bg-dark text-white" id="hint">
-            <small>KODNI UZOQROQDAN (30 CM) VA TEKIS TUTING</small>
-        </div>
+    <div class="mt-3 text-secondary small">
+        <p>💡 <b>Maslahat:</b> Kodni uzoqroqdan (30-40 sm) tuting. <br> Yashil chiziq shtrix-kodni to'liq kesib o'tishi shart.</p>
+    </div>
 
-        <!-- RESULT FORM -->
-        <div id="form-box">
-            <h5 class="fw-bold text-success mb-3 text-center">Skanerlandi ✅</h5>
-            <div class="code-display mb-4" id="scanned-code-text"></div>
+    <!-- Skanerlangandagi forma -->
+    <div id="result-box" class="shadow">
+        <h5 class="fw-bold text-success">Muvaffaqiyatli!</h5>
+        <div class="code-text" id="barcode-display"></div>
 
-            <form method="POST" action="{% url 'product_create' %}">
-                {% csrf_token %}
-                <input type="hidden" name="barcode" id="barcode_hidden">
+        <form method="POST" action="{% url 'product_create' %}">
+            {% csrf_token %}
+            <input type="hidden" name="barcode" id="barcode_hidden">
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Mahsulot nomi</label>
-                    <input type="text" name="name" class="form-control form-control-lg" placeholder="Nomi..." required>
-                </div>
+            <input type="text" name="name" placeholder="Mahsulot nomi" class="form-control mb-2" required>
+            <div class="row g-2">
+                <div class="col-6"><input type="number" name="purchase_price" placeholder="Olish" class="form-control mb-2"></div>
+                <div class="col-6"><input type="number" name="sale_price" placeholder="Sotish" class="form-control mb-2" required></div>
+            </div>
 
-                <div class="row g-2">
-                    <div class="col-6 mb-3">
-                        <label class="form-label fw-bold small">SKU</label>
-                        <input type="text" name="sku" class="form-control">
-                    </div>
-                    <div class="col-6 mb-3">
-                        <label class="form-label fw-bold small">Olish narxi</label>
-                        <input type="number" name="purchase_price" class="form-control">
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label fw-bold small">Sotish narxi</label>
-                    <input type="number" name="sale_price" class="form-control form-control-lg" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 btn-lg shadow fw-bold">SAQLASH</button>
-                <button type="button" onclick="location.reload()" class="btn btn-link w-100 mt-2 text-muted">Qayta skanerlash</button>
-            </form>
-        </div>
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">SAQLASH</button>
+            <button type="button" onclick="location.reload()" class="btn btn-link w-100 mt-2 text-muted">Qayta skanerlash</button>
+        </form>
     </div>
 </div>
 
@@ -92,47 +76,44 @@
     const beep = document.getElementById("beep");
 
     function onScanSuccess(decodedText) {
-        // Bir marta o'qiganda to'xtatish
+        beep.play();
         html5QrCode.stop().then(() => {
-            beep.play();
-
             document.getElementById("barcode_hidden").value = decodedText;
-            document.getElementById("scanned-code-text").innerText = decodedText;
-
-            document.getElementById("reader-wrapper").style.display = "none";
-            document.getElementById("hint").style.display = "none";
-            document.getElementById("form-box").style.display = "block";
+            document.getElementById("barcode-display").innerText = decodedText;
+            document.getElementById("reader").parentElement.style.display = "none";
+            document.getElementById("result-box").style.display = "block";
         }).catch(err => console.error(err));
     }
 
     function startScanner() {
-        // Uzun shtrix-kodlar uchun oyna (90% kenglik, 40% balandlik)
+        // Uzun kodlar uchun oyna (95% kenglik, 40% balandlik)
         const qrboxFunction = (viewfinderWidth, viewfinderHeight) => {
-            let width = Math.floor(viewfinderWidth * 0.9);
-            let height = Math.floor(viewfinderWidth * 0.4);
+            let width = Math.floor(viewfinderWidth * 0.95);
+            let height = Math.floor(viewfinderWidth * 0.45);
             return { width: width, height: height };
         }
 
         const config = {
-            fps: 25,
+            fps: 20,
             qrbox: qrboxFunction,
-            // Faqat Code 128 formatini qidirish (Raqamlar xato chiqmasligi uchun)
-            formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ]
+            // Format cheklovini olib tashladik, hamma narsani o'qiydi
+            aspectRatio: 1.777778
         };
 
-        // Kamera sozlamalari (ideal - xatolik bermasligi uchun)
-        const cameraConfig = {
-            facingMode: "environment"
-        };
-
-        html5QrCode.start(cameraConfig, config, onScanSuccess)
-        .catch(err => {
-            console.error("Kamera xatosi:", err);
-            // Noutbukda bo'lsa oddiy rejimda yoqish
-            html5QrCode.start({ facingMode: "user" }, config, onScanSuccess);
+        // Kamerani yoqish - Agar "environment" xato bersa, oddiy yoqadi
+        html5QrCode.start(
+            { facingMode: { ideal: "environment" } },
+            config,
+            onScanSuccess
+        ).catch(err => {
+            console.error(err);
+            // Ikkinchi urinish (noutbuk yoki boshqa kameralar uchun)
+            html5QrCode.start(true, config, onScanSuccess)
+            .catch(e => alert("Kamera yoqilmadi. HTTPS va ruxsatni tekshiring."));
         });
     }
 
+    // Sahifa yuklanganda skanerni yoqish
     window.onload = startScanner;
 </script>
 
