@@ -20,32 +20,61 @@
             box-shadow:0 10px 30px rgba(0,0,0,0.2);
         }
 
+        /* 📱 SKANER MAYDONI - UZUNASIGA KENGAYTIRILDI */
         #reader-wrapper {
             position:relative;
             background:#000;
-            min-height:350px;
+            min-height: 300px; /* Balandlik biroz qisqartirildi */
+            display: flex;
+            align-items: center;
+            overflow: hidden;
         }
 
         #scanner {
             width:100%;
         }
 
+        /* Video ichidagi kamerani to'g'irlash */
+        #scanner video {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Fokus ramkasi (Viewfinder) */
+        .viewfinder {
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            width: 90%;
+            height: 120px; /* Uzun barcode uchun to'rtburchak oyna */
+            margin-top: -60px;
+            border: 2px solid rgba(0, 255, 0, 0.5);
+            z-index: 10;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); /* Atrofni qorong'u qilish */
+            border-radius: 10px;
+        }
+
         .laser {
             position:absolute;
             width:100%;
-            height:3px;
+            height:2px;
             background:#00ff00;
             box-shadow:0 0 10px #00ff00;
-            animation:move 3s infinite;
+            top: 50%;
+            animation:move 2s infinite ease-in-out;
+            z-index: 11;
         }
 
         @keyframes move {
-            0%{top:10%}
-            50%{top:90%}
-            100%{top:10%}
+            0%{top:30%}
+            50%{top:70%}
+            100%{top:30%}
         }
 
         #form-box { display:none; padding:20px; }
+
+        /* Quagga chizgan chiziqlarni yashirish */
+        canvas.drawingBuffer { display: none; }
     </style>
 </head>
 
@@ -56,38 +85,30 @@
 
     <!-- CAMERA -->
     <div id="reader-wrapper">
+        <div class="viewfinder"></div> <!-- Fokus oynasi -->
         <div class="laser"></div>
         <div id="scanner"></div>
     </div>
 
-    <div class="text-center py-2" id="hint">
-        <small>Kodni markazga tuting</small>
+    <div class="text-center py-2 bg-dark text-white" id="hint">
+        <small>Uzun kodni yashil chiziqqa parallel tuting</small>
     </div>
 
     <!-- FORM -->
     <div id="form-box">
-
         <h5 class="text-success">Skanerlandi:</h5>
-        <p id="code" class="fw-bold"></p>
+        <p id="code" class="fw-bold text-break"></p>
 
         <form method="POST" action="{% url 'product_create' %}">
             {% csrf_token %}
-
             <input type="hidden" name="barcode" id="barcode">
-
-            <input type="text" name="name" placeholder="Product name" class="form-control mb-2" required>
-
+            <input type="text" name="name" placeholder="Mahsulot nomi" class="form-control mb-2" required>
             <input type="text" name="sku" placeholder="SKU" class="form-control mb-2">
-
-            <input type="number" name="purchase_price" placeholder="Purchase" class="form-control mb-2">
-
-            <input type="number" name="sale_price" placeholder="Sale" class="form-control mb-3" required>
-
-            <button class="btn btn-primary w-100">Save</button>
+            <input type="number" name="purchase_price" placeholder="Olish narxi" class="form-control mb-2">
+            <input type="number" name="sale_price" placeholder="Sotish narxi" class="form-control mb-3" required>
+            <button class="btn btn-primary w-100">Saqlash</button>
         </form>
-
-        <button onclick="location.reload()" class="btn btn-link w-100 mt-2">Qayta scan</button>
-
+        <button onclick="location.reload()" class="btn btn-link w-100 mt-2 text-muted">Qayta skanerlash</button>
     </div>
 
 </div>
@@ -96,7 +117,6 @@
 <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-
 const beep = document.getElementById("beep");
 
 Quagga.init({
@@ -105,53 +125,61 @@ Quagga.init({
         target: document.querySelector('#scanner'),
         constraints: {
             facingMode: "environment",
-            width: { min: 1280 },
-            height: { min: 720 }
+            width: { min: 1280, ideal: 1920 }, // Yuqori aniqlik (HD)
+            height: { min: 720, ideal: 1080 },
+            aspectRatio: { min: 1, max: 2 }
+        },
+        // 🔥 SCAN AREA: Skanerni faqat o'rtadagi uzun chiziqni o'qishga majburlaymiz
+        area: {
+            top: "30%",    // Tepadan 30% pastdan boshla
+            right: "5%",   // O'ngdan 5% ichkarida
+            left: "5%",    // Chapdan 5% ichkarida
+            bottom: "30%"  // Pastdan 30% tepada to'xta
         }
     },
 
     locator: {
-        patchSize: "medium",
-        halfSample: false
+        patchSize: "large", // Uzun kodlar uchun 'large' yaxshi ishlaydi
+        halfSample: false   // Sifatni tushirmaslik (aniqroq o'qiydi)
     },
 
     numOfWorkers: navigator.hardwareConcurrency || 4,
 
     decoder: {
         readers: [
-            "code_128_reader",
+            "code_128_reader", // Birinchi navbatda rasmdagi kod turi
             "ean_reader",
-            "ean_8_reader",
             "code_39_reader",
             "i2of5_reader"
-        ]
+        ],
+        multiple: false // Bitta kodni aniq ushlash uchun
     },
 
     locate: true
 
 }, function(err) {
     if (err) {
-        alert("Camera error");
+        alert("Kamera xatosi: " + err);
         return;
     }
     Quagga.start();
 });
 
 Quagga.onDetected(function(data){
-
     let code = data.codeResult.code;
 
-    beep.play();
+    // Uzun kodlarni aniqroq tekshirish (False positive-ni kamaytirish uchun)
+    if (code.length > 5) {
+        beep.play();
+        Quagga.stop();
 
-    Quagga.stop();
+        document.getElementById("barcode").value = code;
+        document.getElementById("code").innerText = code;
 
-    document.getElementById("barcode").value = code;
-    document.getElementById("code").innerText = code;
-
-    document.getElementById("reader-wrapper").style.display = "none";
-    document.getElementById("hint").style.display = "none";
-    document.getElementById("form-box").style.display = "block";
-
+        document.getElementById("reader-wrapper").style.display = "none";
+        document.getElementById("hint").style.display = "none";
+        document.getElementById("form-box").style.display = "block";
+    }
 });
 
 </script>
