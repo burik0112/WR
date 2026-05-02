@@ -1,146 +1,202 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Professional Industrial Scanner</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- html5-qrcode kutubxonasi -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<title>Professional Scanner</title>
 
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; margin: 0; }
-        .main-container { padding: 10px; }
+<script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        /* 📱 SKANER OYNASI */
-        #reader-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: auto;
-            border-radius: 20px;
-            overflow: hidden;
-            border: 2px solid #444;
-            display: none;
-        }
+<style>
+body { background:#000; color:#fff; font-family:sans-serif; }
+.main-container { padding:10px; text-align:center; }
 
-        #reader { width: 100% !important; border: none !important; }
+#reader-wrapper {
+    position:relative;
+    max-width:600px;
+    margin:auto;
+    border-radius:20px;
+    overflow:hidden;
+    border:2px solid #444;
+    display:none;
+}
 
-        /* 🟢 LASER ANIMATSIYASI */
-        .custom-laser {
-            position: absolute; width: 100%; height: 2px;
-            background: #00ff00; box-shadow: 0 0 15px #00ff00;
-            top: 50%; z-index: 100; pointer-events: none;
-            animation: moveLaser 2.5s infinite ease-in-out;
-        }
-        @keyframes moveLaser {
-            0% { top: 25%; } 50% { top: 75%; } 100% { top: 25%; }
-        }
+#reader { width:100%; }
 
-        /* 📝 FORM QISMI */
-        #result-card {
-            display: none; background: #fff; color: #000;
-            padding: 20px; border-radius: 25px; margin-top: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
+.custom-laser {
+    position:absolute;
+    width:100%;
+    height:2px;
+    background:#00ff00;
+    box-shadow:0 0 15px #00ff00;
+    top:50%;
+    animation:moveLaser 2.5s infinite;
+}
 
-        .btn-init {
-            background: #28a745; color: white; padding: 15px 40px;
-            border-radius: 50px; border: none; font-weight: bold;
-            font-size: 18px; margin-top: 100px;
-        }
-    </style>
+@keyframes moveLaser {
+    0%{top:25%}
+    50%{top:75%}
+    100%{top:25%}
+}
+
+#result-card {
+    display:none;
+    background:#fff;
+    color:#000;
+    padding:20px;
+    border-radius:20px;
+    margin-top:20px;
+}
+
+.btn-init {
+    background:#28a745;
+    color:white;
+    padding:15px 40px;
+    border-radius:50px;
+    border:none;
+    font-weight:bold;
+}
+</style>
 </head>
+
 <body>
 
-<div class="main-container text-center">
-    <h4 class="mt-3 mb-4 text-success fw-bold">PRO SCANNER <span class="text-white">v3.0</span></h4>
+<div class="main-container">
 
-    <!-- Yoqish tugmasi -->
-    <div id="init-btn-group">
-        <button class="btn-init shadow-lg" onclick="initScanner()">KAMERANI YOQISH</button>
-        <p class="mt-4 text-secondary small">💡 Kodni uzoqroqdan (30-40 sm) tuting!</p>
-    </div>
+<h4 class="mt-3 text-success">PRO SCANNER</h4>
 
-    <!-- Skaner maydoni -->
-    <div id="reader-wrapper">
-        <div class="custom-laser"></div>
-        <div id="reader"></div>
-    </div>
+<div id="init-btn-group">
+    <button class="btn-init" onclick="initScanner()">KAMERANI YOQISH</button>
+</div>
 
-    <!-- Natija -->
-    <div id="result-card" class="text-start">
-        <h5 class="fw-bold mb-3 text-success">Skanerlandi ✅</h5>
-        <div id="display-barcode" class="p-2 mb-3 bg-light border rounded font-monospace small" style="word-break: break-all;"></div>
+<div id="reader-wrapper">
+    <div class="custom-laser"></div>
+    <div id="reader"></div>
+</div>
 
-        <form method="POST" action="{% url 'product_create' %}">
-            {% csrf_token %}
-            <input type="hidden" name="barcode" id="input_barcode">
-            <div class="mb-3">
-                <label class="form-label small fw-bold">MAHSULOT NOMI</label>
-                <input type="text" name="name" class="form-control" required>
-            </div>
-            <div class="row g-2 mb-4">
-                <div class="col-6"><input type="number" name="purchase_price" class="form-control" placeholder="Olish"></div>
-                <div class="col-6"><input type="number" name="sale_price" class="form-control" placeholder="Sotish" required></div>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-3">SAQLASH</button>
-            <button type="button" onclick="window.location.reload()" class="btn btn-link w-100 mt-2 text-muted">Bekor qilish</button>
-        </form>
-    </div>
+<div id="result-card">
+    <h5 class="text-success">Skanerlandi</h5>
+    <p id="display-barcode"></p>
+
+    <form method="POST" action="{% url 'product_create' %}">
+        {% csrf_token %}
+        <input type="hidden" name="barcode" id="barcode">
+
+        <input type="text" name="name" class="form-control mb-2" placeholder="Mahsulot nomi" required>
+        <input type="number" name="sale_price" class="form-control mb-2" placeholder="Narx" required>
+
+        <button class="btn btn-primary w-100">Saqlash</button>
+    </form>
+</div>
+
 </div>
 
 <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-    let html5QrCode;
-    const beep = document.getElementById("beep");
 
-    async function initScanner() {
-        document.getElementById("init-btn-group").style.display = "none";
-        document.getElementById("reader-wrapper").style.display = "block";
+let started = false;
+let lastResults = [];
 
-        html5QrCode = new Html5Qrcode("reader");
+const beep = document.getElementById("beep");
 
-        const config = {
-            fps: 30, // Tezlik maksimal
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-                // Uzun shtrix-kod uchun 90% kenglik, lekin ingichka balandlik (to'rtburchak)
-                let width = Math.floor(viewfinderWidth * 0.9);
-                let height = Math.floor(viewfinderWidth * 0.35);
-                return { width: width, height: height };
-            },
-            // 🔥 RASMDAGI UZUN KODNI (Code 128) TEZROQ TOPISH UCHUN FORMATNI CHEKLAYMIZ
-            formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ],
-            // Fokus va aniqlik sozlamalari
-            videoConstraints: {
-                facingMode: "environment",
-                // Juda baland resolyutsiya ba'zi telda xato beradi, shuning uchun idealini beramiz
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 },
-                focusMode: "continuous"
+
+// 🔥 GS1 parser
+function extractGTIN(code){
+    let match = code.match(/01(\d{14})/);
+    if(match) return match[1];
+    return code;
+}
+
+
+// 🔥 FILTER (ENG MUHIM)
+function getStableCode(code){
+
+    lastResults.push(code);
+
+    if(lastResults.length > 6){
+        lastResults.shift();
+    }
+
+    let counts = {};
+
+    lastResults.forEach(c => {
+        counts[c] = (counts[c] || 0) + 1;
+    });
+
+    for(let key in counts){
+        if(counts[key] >= 3){
+            return key; // tasdiqlangan kod
+        }
+    }
+
+    return null;
+}
+
+
+function initScanner(){
+
+    if(started) return;
+    started = true;
+
+    document.getElementById("init-btn-group").style.display = "none";
+    document.getElementById("reader-wrapper").style.display = "block";
+
+    Quagga.init({
+        inputStream: {
+            type: "LiveStream",
+            target: document.querySelector('#reader'),
+            constraints: {
+                facingMode: { ideal: "environment" }
             }
-        };
+        },
 
-        // Kamerani yoqish
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
-        .catch(err => {
-            console.error("Xato:", err);
-            // Agar HD rejimda xato bersa (Overconstrained), oddiy rejimda qayta urinadi
-            html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: {width: 280, height: 120} }, onScanSuccess);
-        });
-    }
+        locator: {
+            patchSize: "large",
+            halfSample: false
+        },
 
-    function onScanSuccess(decodedText) {
+        decoder: {
+            readers: [
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "code_39_reader",
+                "i2of5_reader"
+            ]
+        }
+
+    }, function(err){
+        if(err){
+            alert("Kamera ishlamadi");
+            return;
+        }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(function(data){
+
+        let raw = data.codeResult.code;
+        let clean = extractGTIN(raw);
+
+        let valid = getStableCode(clean);
+
+        if(!valid) return; // hali tasdiqlanmadi
+
         beep.play();
-        html5QrCode.stop().then(() => {
-            document.getElementById("reader-wrapper").style.display = "none";
-            document.getElementById("result-card").style.display = "block";
-            document.getElementById("display-barcode").innerText = decodedText;
-            document.getElementById("input_barcode").value = decodedText;
-        });
-    }
+        Quagga.stop();
+
+        document.getElementById("display-barcode").innerText = valid;
+        document.getElementById("barcode").value = valid;
+
+        document.getElementById("reader-wrapper").style.display = "none";
+        document.getElementById("result-card").style.display = "block";
+
+    });
+}
+
 </script>
 
 </body>
