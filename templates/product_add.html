@@ -4,43 +4,49 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Professional Scanner</title>
+<title>PRO Scanner</title>
 
-<script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-body { background:#000; color:#fff; font-family:sans-serif; }
-.main-container { padding:10px; text-align:center; }
+body {
+    background:#000;
+    color:#fff;
+    text-align:center;
+}
 
+/* Scanner box */
 #reader-wrapper {
     position:relative;
-    max-width:600px;
+    max-width:500px;
     margin:auto;
     border-radius:20px;
     overflow:hidden;
-    border:2px solid #444;
-    display:none;
+    border:3px solid red; /* 🔴 default */
 }
 
-#reader { width:100%; }
+/* Scanner area */
+#reader {
+    width:100%;
+}
 
-.custom-laser {
+/* Laser */
+.laser {
     position:absolute;
     width:100%;
-    height:2px;
+    height:3px;
     background:#00ff00;
-    box-shadow:0 0 15px #00ff00;
     top:50%;
-    animation:moveLaser 2.5s infinite;
+    animation:move 2s infinite;
+}
+@keyframes move {
+    0%{top:20%}
+    50%{top:80%}
+    100%{top:20%}
 }
 
-@keyframes moveLaser {
-    0%{top:25%}
-    50%{top:75%}
-    100%{top:25%}
-}
-
+/* Result */
 #result-card {
     display:none;
     background:#fff;
@@ -49,35 +55,20 @@ body { background:#000; color:#fff; font-family:sans-serif; }
     border-radius:20px;
     margin-top:20px;
 }
-
-.btn-init {
-    background:#28a745;
-    color:white;
-    padding:15px 40px;
-    border-radius:50px;
-    border:none;
-    font-weight:bold;
-}
 </style>
 </head>
 
 <body>
 
-<div class="main-container">
-
-<h4 class="mt-3 text-success">PRO SCANNER</h4>
-
-<div id="init-btn-group">
-    <button class="btn-init" onclick="initScanner()">KAMERANI YOQISH</button>
-</div>
+<h4 class="mt-3">📦 PRO SCANNER</h4>
 
 <div id="reader-wrapper">
-    <div class="custom-laser"></div>
+    <div class="laser"></div>
     <div id="reader"></div>
 </div>
 
 <div id="result-card">
-    <h5 class="text-success">Skanerlandi</h5>
+    <h5 class="text-success">Skanerlandi ✅</h5>
     <p id="display-barcode"></p>
 
     <form method="POST" action="{% url 'product_create' %}">
@@ -91,111 +82,59 @@ body { background:#000; color:#fff; font-family:sans-serif; }
     </form>
 </div>
 
-</div>
-
 <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
 
-let started = false;
-let lastResults = [];
-
 const beep = document.getElementById("beep");
+const wrapper = document.getElementById("reader-wrapper");
 
-
-// 🔥 GS1 parser
 function extractGTIN(code){
     let match = code.match(/01(\d{14})/);
     if(match) return match[1];
     return code;
 }
 
+const html5QrCode = new Html5Qrcode("reader");
 
-// 🔥 FILTER (ENG MUHIM)
-function getStableCode(code){
-
-    lastResults.push(code);
-
-    if(lastResults.length > 6){
-        lastResults.shift();
+const config = {
+    fps: 15,
+    qrbox: { width: 280, height: 120 },
+    formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128
+    ],
+    experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
     }
+};
 
-    let counts = {};
+html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
 
-    lastResults.forEach(c => {
-        counts[c] = (counts[c] || 0) + 1;
-    });
+        let clean = extractGTIN(decodedText);
 
-    for(let key in counts){
-        if(counts[key] >= 3){
-            return key; // tasdiqlangan kod
-        }
-    }
-
-    return null;
-}
-
-
-function initScanner(){
-
-    if(started) return;
-    started = true;
-
-    document.getElementById("init-btn-group").style.display = "none";
-    document.getElementById("reader-wrapper").style.display = "block";
-
-    Quagga.init({
-        inputStream: {
-            type: "LiveStream",
-            target: document.querySelector('#reader'),
-            constraints: {
-                facingMode: { ideal: "environment" }
-            }
-        },
-
-        locator: {
-            patchSize: "large",
-            halfSample: false
-        },
-
-        decoder: {
-            readers: [
-                "code_128_reader",
-                "ean_reader",
-                "ean_8_reader",
-                "code_39_reader",
-                "i2of5_reader"
-            ]
-        }
-
-    }, function(err){
-        if(err){
-            alert("Kamera ishlamadi");
-            return;
-        }
-        Quagga.start();
-    });
-
-    Quagga.onDetected(function(data){
-
-        let raw = data.codeResult.code;
-        let clean = extractGTIN(raw);
-
-        let valid = getStableCode(clean);
-
-        if(!valid) return; // hali tasdiqlanmadi
+        // 🔥 GREEN FRAME SUCCESS
+        wrapper.style.border = "3px solid lime";
 
         beep.play();
-        Quagga.stop();
 
-        document.getElementById("display-barcode").innerText = valid;
-        document.getElementById("barcode").value = valid;
+        setTimeout(() => {
+            html5QrCode.stop();
 
-        document.getElementById("reader-wrapper").style.display = "none";
-        document.getElementById("result-card").style.display = "block";
+            document.getElementById("display-barcode").innerText = clean;
+            document.getElementById("barcode").value = clean;
 
-    });
-}
+            document.getElementById("reader-wrapper").style.display = "none";
+            document.getElementById("result-card").style.display = "block";
+        }, 500);
+    },
+    (error) => {
+        // scan noto‘g‘ri bo‘lsa qizil qoladi
+        wrapper.style.border = "3px solid red";
+    }
+);
 
 </script>
 
